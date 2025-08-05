@@ -27,20 +27,22 @@ def did_it_finish(trajectories, states_no):
     """
 
     completed = []
+    number_completed = []
     trajectories = np.array(trajectories)
 
     for trajectory in trajectories[:, 1:]:
 
+        number_completed.append(trajectory[-1])
         if trajectory[-1] == states_no-1:
             completed.append(1)
         else:
             completed.append(0)
 
-    return completed
+    return completed, number_completed
 
 
 def plot_trajectories(trajectories, color, lwidth_mean, lwidth_sample,
-                      number_samples):
+                      number_samples, ylim, xticks=[], yticks=[], ):
     """
     plot input trajectories
     """
@@ -50,8 +52,8 @@ def plot_trajectories(trajectories, color, lwidth_mean, lwidth_sample,
     for i in range(number_samples):
         plt.plot(trajectories[i], color=color,
                  linewidth=lwidth_sample, linestyle='dashed')
-    plt.xticks([0, 7, 15])
-    plt.yticks([0, 10, 20])
-    plt.ylim(-1, 21)
+    plt.xticks(xticks)
+    plt.yticks(yticks)
+    plt.ylim(-1, ylim)
     plt.xlabel('time')
     plt.ylabel('Units of work \n completed')
