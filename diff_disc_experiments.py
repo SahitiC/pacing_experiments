@@ -5,6 +5,11 @@ from scipy.stats import sem
 import mdp_algms
 import task_structure
 import helper
+from cycler import cycler
+import matplotlib as mpl
+mpl.rcParams['font.size'] = 20
+mpl.rcParams['lines.linewidth'] = 2
+mpl.rcParams['axes.linewidth'] = 2
 
 # %% functions
 
@@ -66,38 +71,40 @@ HORIZON = 15  # no. of weeks for task
 EFFICACY = 0.8  # self-efficacy (probability of progress for each unit)
 REWARD_UNIT = 1  # reward per unit
 BETA = 10  # softmax beta for diff-disc model
-N_TRIALS = 20  # no. of trajectories
+N_TRIALS = 1000  # no. of trajectories
 REWARD_SHIRK = 0.1
 EFFORT_WORK = -0.3
 
-DISOCUNT_FACTOR_REWARD = 0.9
+DISCOUNT_FACTOR_REWARD = 0.9
 DISCOUNT_FACTOR_COST = 0.6
 
 # %% explore param regime
 
-rewards_unit = [0.5, 1, 1.5, 2, 2.5]
+rewards_unit = [0.5, 1, 1.5, 2, 4]
 
 
 fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
 fig2, ax2 = plt.subplots(figsize=(6, 4), dpi=300)
+fig3, ax3 = plt.subplots(figsize=(6, 4), dpi=300)
 
-plt.figure()
 
 delay_mn = []
 delay_sem = []
 completion_rate = []
+completion_num = []
 for reward_unit in rewards_unit:
 
     trajectories = gen_data_diff_discounts(
         STATES, ACTIONS, HORIZON, reward_unit, REWARD_SHIRK, BETA,
-        DISOCUNT_FACTOR_REWARD, DISCOUNT_FACTOR_COST, EFFICACY, EFFORT_WORK,
+        DISCOUNT_FACTOR_REWARD, DISCOUNT_FACTOR_COST, EFFICACY, EFFORT_WORK,
         N_TRIALS, STATES_NO)
 
     delays = helper.time_to_finish(trajectories, STATES_NO)
     delay_mn.append(np.nanmean(delays))
     delay_sem.append(sem(delays, nan_policy='omit'))
-    completions = helper.did_it_finish(trajectories, STATES_NO)
+    completions, compl_number = helper.did_it_finish(trajectories, STATES_NO)
     completion_rate.append(np.nanmean(completions))
+    completion_num.append(np.nanmean(compl_number))
 
 ax1.errorbar(rewards_unit, delay_mn, yerr=delay_sem, linewidth=3,
              marker='o', linestyle='--')
@@ -105,33 +112,113 @@ ax1.errorbar(rewards_unit, delay_mn, yerr=delay_sem, linewidth=3,
 ax2.plot(rewards_unit, completion_rate, linewidth=3, marker='o',
          linestyle='--')
 
+ax3.plot(rewards_unit, completion_num, linewidth=3, marker='o',
+         linestyle='--')
+
 sns.despine(ax=ax1)
 ax1.set_ylabel('Avg. time to \n complete task')
 ax1.set_xlabel('reward for completion')
 ax1.set_yticks([0, 5, 10, 15])
-ax1.legend(bbox_to_anchor=(0.5, 1.25), ncol=4, frameon=False, fontsize=18,
-           loc='upper center', columnspacing=0.5)
-ax1.set_title(r'$\gamma_r$ = 0.9, $\gamma_c$=0.6')
+# ax1.legend(bbox_to_anchor=(0.5, 1.25), ncol=4, frameon=False, fontsize=18,
+#            loc='upper center', columnspacing=0.5)
+ax1.set_title(
+    rf'$\gamma_r$ = {DISCOUNT_FACTOR_REWARD}, $\gamma_c$={DISCOUNT_FACTOR_COST}')
 ax1.set_xticks(rewards_unit)
 
 sns.despine(ax=ax2)
-ax2.set_ylabel('Completion \n rate', fontsize=20)
-ax2.set_xlabel('reward for completion', fontsize=20)
+ax2.set_ylabel('Completion \n rate')
+ax2.set_xlabel('reward for completion')
 ax2.set_yticks([0, 1])
 ax2.set_xticks(rewards_unit)
+
+sns.despine(ax=ax3)
+ax3.set_ylabel('Avg units \n completed')
+ax3.set_xlabel('reward for completion')
+ax3.set_yticks([0, 10, 20])
+ax3.set_xticks(rewards_unit)
 
 for reward_unit in rewards_unit:
 
     trajectories = gen_data_diff_discounts(
         STATES, ACTIONS, HORIZON, reward_unit, REWARD_SHIRK, BETA,
-        DISOCUNT_FACTOR_REWARD, DISCOUNT_FACTOR_COST, EFFICACY, EFFORT_WORK,
+        DISCOUNT_FACTOR_REWARD, DISCOUNT_FACTOR_COST, EFFICACY, EFFORT_WORK,
         N_TRIALS, STATES_NO)
 
     plt.figure(figsize=(3, 3), dpi=300)
-    helper.plot_trajectories(trajectories, 'black', 2, 0.5, number_samples=10)
-    plt.title(f'reward={np.round(reward_unit,2)}',
-              fontsize=24)
+    helper.plot_trajectories(trajectories, 'black', 2, 0.5, number_samples=10,
+                             ylim=STATES_NO, xticks=[0, 7, 15],
+                             yticks=[0, 10, 20])
+    plt.title(f'reward={np.round(reward_unit,2)}')
     sns.despine()
     plt.show()
 
-# %% experimental manipulation
+# %% vary discounts
+
+cmap_blues = plt.get_cmap('Blues')
+discounts_reward = [0.5, 0.7, 0.8, 0.9, 0.95]
+discounts_cost = np.linspace(0.4, 1, 10)
+cycle_colors = cycler('color',
+                      cmap_blues(np.linspace(0.3, 1, 5)))
+reward_unit = 0.5
+
+fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
+fig2, ax2 = plt.subplots(figsize=(4, 3), dpi=300)
+fig3, ax3 = plt.subplots(figsize=(4, 3), dpi=300)
+ax1.set_prop_cycle(cycle_colors)
+ax2.set_prop_cycle(cycle_colors)
+ax3.set_prop_cycle(cycle_colors)
+
+plt.figure()
+for discount_factor_reward in discounts_reward:
+
+    delay_mn = []
+    delay_sem = []
+    completion_rate = []
+    completion_num = []
+    for discount_factor_cost in discounts_cost:
+
+        trajectories = gen_data_diff_discounts(
+            STATES, ACTIONS, HORIZON, reward_unit, REWARD_SHIRK, BETA,
+            discount_factor_reward, discount_factor_cost, EFFICACY,
+            EFFORT_WORK, N_TRIALS, STATES_NO)
+
+        delays = helper.time_to_finish(trajectories, STATES_NO)
+        delay_mn.append(np.nanmean(delays))
+        delay_sem.append(sem(delays, nan_policy='omit'))
+        completions, compl_number = helper.did_it_finish(trajectories,
+                                                         STATES_NO)
+        completion_rate.append(np.nanmean(completions))
+        completion_num.append(np.nanmean(compl_number))
+
+    ax1.errorbar(discounts_cost, delay_mn, yerr=delay_sem, linewidth=3,
+                 marker='o', linestyle='--', label=f'{discount_factor_reward}')
+
+    ax2.plot(completion_rate, linewidth=3, marker='o', linestyle='--')
+
+    ax3.plot(completion_num, linewidth=3, marker='o', linestyle='--')
+
+sns.despine(ax=ax1)
+ax1.set_ylabel('Avg. time to \n complete task')
+ax1.set_xlabel(r'$\gamma_{c}$')
+ax1.set_yticks([0, 5, 10, 15])
+ax1.legend(bbox_to_anchor=(0.5, 1.25), ncol=5, frameon=False, fontsize=18,
+           loc='upper center', columnspacing=0.5)
+fig1.text(0.08, 1.00, r'$\gamma_{r}$', ha='center', va='center')
+
+
+sns.despine(ax=ax2)
+ax2.set_ylabel('Completion \n rate')
+ax2.set_xlabel(r'$\gamma_{c}$')
+ax2.set_yticks([0, 1])
+ax2.set_xticks([])
+ax2.set_ylim(-1, 1.5)
+
+sns.despine(ax=ax3)
+ax3.set_ylabel('Avg units \n completed')
+ax3.set_xlabel(r'$\gamma_{c}$')
+ax3.set_yticks([0, 10, 20])
+ax3.set_xticks([])
+ax3.set_ylim(-1, STATES_NO)
+
+# %% recovery : minimum sample required to recover params and model
+# fit basic model
