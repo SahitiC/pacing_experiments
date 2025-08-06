@@ -69,19 +69,19 @@ STATES = np.arange(STATES_NO)
 ACTIONS = [np.arange(STATES_NO-i) for i in range(STATES_NO)]
 HORIZON = 15  # no. of weeks for task
 EFFICACY = 0.8  # self-efficacy (probability of progress for each unit)
-REWARD_UNIT = 1  # reward per unit
-BETA = 10  # softmax beta for diff-disc model
+REWARD_UNIT = 4  # reward per unit
+BETA = 12  # softmax beta for diff-disc model
 N_TRIALS = 1000  # no. of trajectories
 REWARD_SHIRK = 0.1
 EFFORT_WORK = -0.3
 
 DISCOUNT_FACTOR_REWARD = 0.9
-DISCOUNT_FACTOR_COST = 0.6
+DISCOUNT_FACTOR_COST = 0.86
 
 # %% explore param regime
 
-rewards_unit = [0.5, 1, 1.5, 2, 4]
-
+rewards_unit = [0.5, 4]  # 1, 1.5, 2,
+effort_work = -2.5
 
 fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
 fig2, ax2 = plt.subplots(figsize=(6, 4), dpi=300)
@@ -96,7 +96,7 @@ for reward_unit in rewards_unit:
 
     trajectories = gen_data_diff_discounts(
         STATES, ACTIONS, HORIZON, reward_unit, REWARD_SHIRK, BETA,
-        DISCOUNT_FACTOR_REWARD, DISCOUNT_FACTOR_COST, EFFICACY, EFFORT_WORK,
+        DISCOUNT_FACTOR_REWARD, DISCOUNT_FACTOR_COST, EFFICACY, effort_work,
         N_TRIALS, STATES_NO)
 
     delays = helper.time_to_finish(trajectories, STATES_NO)
@@ -159,7 +159,8 @@ discounts_reward = [0.5, 0.7, 0.8, 0.9, 0.95]
 discounts_cost = np.linspace(0.4, 1, 10)
 cycle_colors = cycler('color',
                       cmap_blues(np.linspace(0.3, 1, 5)))
-reward_unit = 0.5
+reward_unit = 0.45
+effort_work = EFFORT_WORK
 
 fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
 fig2, ax2 = plt.subplots(figsize=(4, 3), dpi=300)
@@ -180,7 +181,7 @@ for discount_factor_reward in discounts_reward:
         trajectories = gen_data_diff_discounts(
             STATES, ACTIONS, HORIZON, reward_unit, REWARD_SHIRK, BETA,
             discount_factor_reward, discount_factor_cost, EFFICACY,
-            EFFORT_WORK, N_TRIALS, STATES_NO)
+            effort_work, N_TRIALS, STATES_NO)
 
         delays = helper.time_to_finish(trajectories, STATES_NO)
         delay_mn.append(np.nanmean(delays))
@@ -221,4 +222,6 @@ ax3.set_xticks([])
 ax3.set_ylim(-1, STATES_NO)
 
 # %% recovery : minimum sample required to recover params and model
-# fit basic model
+# fit basic model and diff disc
+# also check average delays and completion rates: diff between conditions
+# gives another source for power analysis?
