@@ -105,9 +105,10 @@ def gen_data_no_commitment(states, actions_base, horizon, reward_unit,
 
 
 # %%
-STATES_NO = (20+1) * 2
-STATES = np.arange((20+1) * 2)
-ACTIONS_BASE = [np.arange(21-i) for i in range(21)]
+STATES_NO = (30+1) * 2
+STATES = np.arange((30+1) * 2)
+STATES_BASE = np.arange(int(STATES_NO/2))
+ACTIONS_BASE = [np.arange(31-i) for i in range(31)]
 REWARD_UNIT = 4.0
 REWARD_SHIRK = 0.1
 EFFORT_WORK = -0.3
@@ -115,33 +116,143 @@ BETA = 10
 HORIZON = 15  # no. of weeks for task
 DISCOUNT_FACTOR = 0.9  # discounting factor
 EFFICACY = 0.8  # self-efficacy (probability of progress for each unit)
-N_TRIALS = 1000
+N_TRIALS = 40
 INTEREST_STATES = np.array([0, 1])
 P_STAY_LOW = 0.95
 P_STAY_HIGH = 0.05
-REWARD_INTEREST = 4.0
+REWARD_INTEREST = 40.0
 
-# %%
+# %% explore param regime
+if __name__ == "__main__":
 
-rewards_interest = np.linspace(0.0, 20, 10)
-discounts = [0.5, 0.6, 0.8, 0.95, 1]
-cmap_blues = plt.get_cmap('Blues')
-cycle_colors = cycler('color',
-                      cmap_blues(np.linspace(0.3, 1, 5)))
+    # %%
 
-fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
-fig2, ax2 = plt.subplots(figsize=(4, 3), dpi=300)
-fig3, ax3 = plt.subplots(figsize=(4, 3), dpi=300)
-ax1.set_prop_cycle(cycle_colors)
-ax2.set_prop_cycle(cycle_colors)
-ax3.set_prop_cycle(cycle_colors)
+    rewards_interest = np.linspace(0.0, 50, 10)
+    discounts = [0.6, 0.7, 0.8, 0.95, 1]
+    cmap_blues = plt.get_cmap('Blues')
+    cycle_colors = cycler('color',
+                          cmap_blues(np.linspace(0.3, 1, 5)))
 
-for discount_factor in discounts:
+    fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
+    fig2, ax2 = plt.subplots(figsize=(4, 3), dpi=300)
+    fig3, ax3 = plt.subplots(figsize=(4, 3), dpi=300)
+    ax1.set_prop_cycle(cycle_colors)
+    ax2.set_prop_cycle(cycle_colors)
+    ax3.set_prop_cycle(cycle_colors)
 
-    delay_mn = []
-    delay_sem = []
-    completion_rate = []
-    completion_num = []
+    for discount_factor in discounts:
+
+        delay_mn = []
+        delay_sem = []
+        completion_rate = []
+        completion_num = []
+        for reward_interest in rewards_interest:
+
+            trajectories = gen_data_no_commitment(
+                STATES, ACTIONS_BASE, HORIZON, REWARD_UNIT, REWARD_SHIRK,
+                BETA, P_STAY_LOW, P_STAY_HIGH, discount_factor, EFFICACY,
+                EFFORT_WORK, reward_interest, N_TRIALS, STATES_NO)
+
+            delays = helper.time_to_finish(trajectories, STATES_NO/2)
+            delay_mn.append(np.nanmean(delays))
+            delay_sem.append(sem(delays, nan_policy='omit'))
+            completions, compl_number = helper.did_it_finish(trajectories,
+                                                             STATES_NO/2)
+            completion_rate.append(np.nanmean(completions))
+            completion_num.append(np.nanmean(compl_number))
+
+        ax1.errorbar(rewards_interest, delay_mn, yerr=delay_sem, linewidth=3,
+                     marker='o', linestyle='--', label=f'{discount_factor}')
+
+        ax2.plot(completion_rate, linewidth=3, marker='o', linestyle='--')
+
+        ax3.plot(completion_num, linewidth=3, marker='o', linestyle='--')
+
+    sns.despine(ax=ax1)
+    ax1.set_ylabel('Avg. time to \n complete task')
+    ax1.set_xlabel(r'$r_{interest}$')
+    ax1.set_yticks([0, 5, 10, 15])
+    ax1.legend(bbox_to_anchor=(0.5, 1.2), ncol=5, frameon=False, fontsize=18,
+               loc='upper center', columnspacing=0.5)
+    fig1.text(-0.05, 0.95, r'$\gamma$', ha='center', va='center')
+
+    sns.despine(ax=ax2)
+    ax2.set_ylabel('Completion \n rate', fontsize=20)
+    ax2.set_xlabel(r'$r_{interest}$', fontsize=20)
+    ax2.set_yticks([0, 1])
+    ax2.set_xticks([])
+
+    sns.despine(ax=ax3)
+    ax3.set_ylabel('Avg units \n completed')
+    ax3.set_xlabel(r'$r_{interest}$')
+    ax3.set_yticks([0, 10, 20])
+    ax3.set_xticks([])
+    ax3.set_ylim(-1, STATES_NO/2)
+
+    # %% experimental manipulation: how it affects delays across discounts
+
+    rewards_interest = [0, 40]
+    discounts = np.linspace(0.5, 1, 10)
+    cmap_greens = plt.get_cmap('Greens')
+    cycle_colors = cycler('color',
+                          cmap_greens(np.linspace(0.3, 1, 2)))
+
+    fig1, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
+    fig2, ax2 = plt.subplots(figsize=(4, 3), dpi=300)
+    fig3, ax3 = plt.subplots(figsize=(4, 3), dpi=300)
+    ax1.set_prop_cycle(cycle_colors)
+    ax2.set_prop_cycle(cycle_colors)
+    ax3.set_prop_cycle(cycle_colors)
+
+    for reward_interest in rewards_interest:
+        delay_mn = []
+        delay_sem = []
+        completion_rate = []
+        completion_num = []
+        for discount_factor in discounts:
+
+            trajectories = gen_data_no_commitment(
+                STATES, ACTIONS_BASE, HORIZON, REWARD_UNIT, REWARD_SHIRK,
+                BETA, P_STAY_LOW, P_STAY_HIGH, discount_factor, EFFICACY,
+                EFFORT_WORK, reward_interest, N_TRIALS, STATES_NO)
+
+            delays = helper.time_to_finish(trajectories, STATES_NO/2)
+            delay_mn.append(np.nanmean(delays))
+            delay_sem.append(sem(delays, nan_policy='omit'))
+            completions, compl_number = helper.did_it_finish(trajectories,
+                                                             STATES_NO/2)
+            completion_rate.append(np.nanmean(completions))
+            completion_num.append(np.nanmean(compl_number))
+
+        ax1.errorbar(discounts, delay_mn, yerr=delay_sem, linewidth=3,
+                     marker='o', linestyle='--', label=f'{reward_interest}')
+
+        ax2.plot(completion_rate, linewidth=3, marker='o', linestyle='--')
+
+        ax3.plot(completion_num, linewidth=3, marker='o', linestyle='--')
+
+    sns.despine(ax=ax1)
+    ax1.set_ylabel('Avg. time to \n complete task')
+    ax1.set_xlabel(r'$\gamma$')
+    ax1.set_yticks([0, 5, 10, 15])
+    ax1.legend(bbox_to_anchor=(0.5, 1.2), ncol=5, frameon=False, fontsize=18,
+               loc='upper center', columnspacing=0.5)
+    fig1.text(0.2, 0.95, 'r_interest', ha='center', va='center')
+
+    sns.despine(ax=ax2)
+    ax2.set_ylabel('Completion \n rate', fontsize=20)
+    ax2.set_xlabel(r'$\gamma$', fontsize=20)
+    ax2.set_yticks([0, 1])
+    ax2.set_xticks([])
+
+    sns.despine(ax=ax3)
+    ax3.set_ylabel('Avg units \n completed')
+    ax3.set_xlabel(r'$\gamma$')
+    ax3.set_yticks([0, 10, 20])
+    ax3.set_xticks([])
+    ax3.set_ylim(-1, STATES_NO/2)
+
+    discount_factor = 0.7
     for reward_interest in rewards_interest:
 
         trajectories = gen_data_no_commitment(
@@ -149,56 +260,11 @@ for discount_factor in discounts:
             BETA, P_STAY_LOW, P_STAY_HIGH, discount_factor, EFFICACY,
             EFFORT_WORK, reward_interest, N_TRIALS, STATES_NO)
 
-        delays = helper.time_to_finish(trajectories, STATES_NO/2)
-        delay_mn.append(np.nanmean(delays))
-        delay_sem.append(sem(delays, nan_policy='omit'))
-        completions, compl_number = helper.did_it_finish(trajectories,
-                                                         STATES_NO/2)
-        completion_rate.append(np.nanmean(completions))
-        completion_num.append(np.nanmean(compl_number))
-
-    ax1.errorbar(rewards_interest, delay_mn, yerr=delay_sem, linewidth=3,
-                 marker='o', linestyle='--', label=f'{discount_factor}')
-
-    ax2.plot(completion_rate, linewidth=3, marker='o', linestyle='--')
-
-    ax3.plot(completion_num, linewidth=3, marker='o', linestyle='--')
-
-sns.despine(ax=ax1)
-ax1.set_ylabel('Avg. time to \n complete task')
-ax1.set_xlabel(r'$r_{interest}$')
-ax1.set_yticks([0, 5, 10, 15])
-ax1.legend(bbox_to_anchor=(0.5, 1.2), ncol=5, frameon=False, fontsize=18,
-           loc='upper center', columnspacing=0.5)
-fig1.text(-0.05, 0.95, r'$\gamma$', ha='center', va='center')
-
-
-sns.despine(ax=ax2)
-ax2.set_ylabel('Completion \n rate', fontsize=20)
-ax2.set_xlabel(r'$r_{interest}$', fontsize=20)
-ax2.set_yticks([0, 1])
-ax2.set_xticks([])
-
-sns.despine(ax=ax3)
-ax3.set_ylabel('Avg units \n completed')
-ax3.set_xlabel(r'$r_{interest}$')
-ax3.set_yticks([0, 10, 20])
-ax3.set_xticks([])
-ax3.set_ylim(-1, STATES_NO/2)
-
-
-discount_factor = 0.5
-for reward_interest in [0., 6.]:
-
-    trajectories = gen_data_no_commitment(
-        STATES, ACTIONS_BASE, HORIZON, REWARD_UNIT, REWARD_SHIRK,
-        BETA, P_STAY_LOW, P_STAY_HIGH, discount_factor, EFFICACY,
-        EFFORT_WORK, reward_interest, N_TRIALS, STATES_NO)
-
-    plt.figure(figsize=(3, 3), dpi=300)
-    helper.plot_trajectories(trajectories, 'black', 2, 0.5, number_samples=10,
-                             ylim=STATES_NO/2, xticks=[0, 7, 15],
-                             yticks=[0, 10, 20])
-    plt.title(f'r_interest={np.round(reward_interest,2)}')
-    sns.despine()
-    plt.show()
+        plt.figure(figsize=(3, 3), dpi=300)
+        helper.plot_trajectories(trajectories, 'black', 2, 0.5,
+                                 number_samples=30,
+                                 ylim=STATES_NO/2, xticks=[0, 7, 15],
+                                 yticks=[0, 10, 20])
+        plt.title(f'r_interest={np.round(reward_interest,2)}')
+        sns.despine()
+        plt.show()

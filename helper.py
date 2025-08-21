@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import task_structure
 
 
 def time_to_finish(trajectories, states_no):
@@ -57,3 +58,82 @@ def plot_trajectories(trajectories, color, lwidth_mean, lwidth_sample,
     plt.ylim(-1, ylim)
     plt.xlabel('time')
     plt.ylabel('Units of work \n completed')
+
+
+def calculate_likelihood(data, Q_values, beta, T, actions):
+    """
+    calculate likelihood of data under model given optimal Q_values, beta,
+    transitions and actions available
+    """
+    nllkhd = 0
+
+    for i_trial in range(len(data)):
+
+        for i_time in range(len(data[i_trial])-1):
+
+            partial = 0
+            # enumerate over all posible actions for the observed state
+            for i_a, action in enumerate(actions[data[i_trial][i_time]]):
+
+                partial += (
+                    task_structure.softmax_policy(
+                        Q_values[data[i_trial][i_time]]
+                        [:, i_time], beta)[action]
+                    * T[data[i_trial][i_time]][action][
+                        data[i_trial][i_time+1]])
+
+            nllkhd = nllkhd - np.log(partial)
+
+    return nllkhd
+
+
+def calculate_likelihood_interest_rewards(data, Q_values, beta, T, p_stay,
+                                          actions, interest_states):
+    """
+    calculate likelihood of data under interest reward model given 
+    optimal Q_values, beta, transitions, probability of staying in low and
+    high states, and actions available
+    """
+    nllkhd = 0
+
+    for i_trial in range(len(data)):
+
+        # marginal prob of interest rewards at very first time step
+        p_interest = np.zeros(len(interest_states))
+        for i_a, action in enumerate(actions[data[i_trial][0]]):
+
+            p_interest += (p_stay[0, :]  # assume 1st interest state = 0 (low)
+                           * task_structure.softmax_policy(
+                               Q_values[0][data[i_trial][0]]
+                [:, 0], beta)[action]
+                * T[data[i_trial][0]][action][data[i_trial][1]])
+
+        # marginal prob for rest of time steps
+        for i_time in range(1, len(data[i_trial])-1):
+
+            partial = np.zeros(len(interest_states))
+
+            # enumerate over all possible interest states
+            for i_i, interest_state in enumerate(interest_states):
+
+                # enumerate over all possible actions for the observed state
+                for i_a, action in enumerate(actions[data[i_trial][i_time]]):
+
+                    partial += (
+                        p_stay[interest_state, :]
+                        * task_structure.softmax_policy(
+                            Q_values[interest_state]
+                            [data[i_trial][i_time]]
+                            [:, i_time], beta)[action]
+                        * T[data[i_trial][i_time]][action][
+                            data[i_trial][i_time+1]]
+                        * p_interest[interest_state])
+
+            # the above calculation results in a marginal prob over the (two)
+            # possible interest states, which'll be added up in next iteration
+            p_interest = partial
+
+        # final prob is over the two interest states, so must be added up
+        nllkhd = nllkhd - np.log(np.sum(p_interest))
+
+    return nllkhd
