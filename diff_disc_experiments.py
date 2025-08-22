@@ -75,8 +75,8 @@ N_TRIALS = 1000  # no. of trajectories
 REWARD_SHIRK = 0.1
 EFFORT_WORK = -0.3
 
-DISCOUNT_FACTOR_REWARD = 0.9
-DISCOUNT_FACTOR_COST = 0.6
+DISCOUNT_FACTOR_REWARD = 0.8
+DISCOUNT_FACTOR_COST = 0.66
 
 # %% explore param regime
 
@@ -203,7 +203,7 @@ ax1.set_xlabel(r'$\gamma_{c}$')
 ax1.set_yticks([0, 5, 10, 15])
 ax1.legend(bbox_to_anchor=(0.5, 1.25), ncol=5, frameon=False, fontsize=18,
            loc='upper center', columnspacing=0.5)
-fig1.text(0.08, 1.00, r'$\gamma_{r}$', ha='center', va='center')
+fig1.text(-0.05, 1.00, r'$\gamma_{r}$', ha='center', va='center')
 
 
 sns.despine(ax=ax2)
